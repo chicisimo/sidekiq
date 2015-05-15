@@ -7,11 +7,11 @@ module Sidekiq
           Sidekiq::Logging.with_context(log_context(worker, item)) do
             begin
               start = Time.now
-              logger.info { "start" }
+              logger.info { "#{Thread.current.object_id.to_s(36)} started: #{Sidekiq.dump_json(item)}" }
               yield
-              logger.info { "done: #{elapsed(start)} sec" }
+              logger.info { "#{Thread.current.object_id.to_s(36)} processed: #{item['jid']} took #{elapsed(start)} sec" }
             rescue Exception
-              logger.info { "fail: #{elapsed(start)} sec" }
+              logger.info { "#{Thread.current.object_id.to_s(36)} errored: #{item['jid']} took #{elapsed(start)} sec" }
               raise
             end
           end

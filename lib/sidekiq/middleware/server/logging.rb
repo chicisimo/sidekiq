@@ -33,7 +33,7 @@ module Sidekiq
             unless arg.is_a?(Array) && arg.count > 5
               arg
             else
-              "<Array of #{value.count} elements>"
+              "<Array of #{arg.count} elements>"
             end
           end
 

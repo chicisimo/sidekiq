@@ -8,10 +8,26 @@ module Sidekiq
             begin
               start = Time.now
               logger.info { "#{Thread.current.object_id.to_s(36)} started: #{printable_item(item)}" }
+
               yield
-              logger.info { "#{Thread.current.object_id.to_s(36)} processed: #{item['jid']} took #{elapsed(start)} sec" }
+
+              job_name = item['class'].split(':').last
+
+              created_at_to_completion = elapsed(Time.at(item['created_at']))
+              enqueued_at_to_completion = elapsed(Time.at(item['enqueued_at']))
+
+              StatsD.measure("job.#{job_name}.response", elapsed(start))
+              StatsD.measure("job.#{job_name}.created_at_to_completion", created_at_to_completion)
+              StatsD.measure("job.#{job_name}.enqueued_at_to_completion", enqueued_at_to_completion)
+
+              message  = "#{Thread.current.object_id.to_s(36)} processed: #{item['jid']} "
+              message += "(job:#{elapsed(start)}ms, created_at_to_completion:#{created_at_to_completion}ms, enqueued_at_to_completion:#{enqueued_at_to_completion}ms)"
+
+              logger.info { message }
             rescue Exception
-              logger.info { "#{Thread.current.object_id.to_s(36)} errored: #{item['jid']} took #{elapsed(start)} sec" }
+              StatsD.increment("job.errored")
+
+              logger.info { "#{Thread.current.object_id.to_s(36)} errored: #{item['jid']} took #{elapsed(start)}ms" }
               raise
             end
           end
@@ -41,7 +57,7 @@ module Sidekiq
         end
 
         def elapsed(start)
-          (Time.now - start).round(3)
+          ((Time.now - start) * 1000).round
         end
 
         def logger
